@@ -1953,6 +1953,14 @@ void arena_mode::count_win(const input_type in, const const_logic_step step, con
 		const auto& player_id = p.first;
 		const auto faction = p.second.get_faction();
 
+		/*
+			Spectators are on neither side. Paying them the losing award
+			let a spectator stack loss money and bring it onto a team.
+		*/
+		if (faction != winner && faction != loser) {
+			continue;
+		}
+
 		give_monetary_award(in, player_id, {}, faction == winner ? winner_award : loser_award);
 	}
 

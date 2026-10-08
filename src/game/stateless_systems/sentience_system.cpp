@@ -883,7 +883,11 @@ bool sentience_system::process_damage_message(const messages::damage_message& d,
 				const auto new_one = damage_owner { inflicting_capability, 1, applied, hp, pe };
 
 				if (owners.size() == owners.max_size()) {
-					if (owners.back() < new_one) {
+					/*
+						operator< orders a bigger applied_damage first, so back() is the
+						smallest contributor. Replace it only when the new hit did more.
+					*/
+					if (new_one.applied_damage > owners.back().applied_damage) {
 						owners.back() = new_one;
 					}
 				}

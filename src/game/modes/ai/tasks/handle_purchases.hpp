@@ -37,6 +37,21 @@ inline std::optional<item_flavour_id> handle_purchases(
 	ctx.ai_state.purchase_decision_countdown -= dt_secs;
 
 	/*
+		The buy menu rejects a missing price and a price of 0.
+		Bots have to do the same: dereferencing an empty price crashes,
+		and a free flavour is a purchase the mode will ignore.
+	*/
+	auto affordable_price = [&](const item_flavour_id id) -> std::optional<money_type> {
+		const auto price = ::find_price_of(ctx.cosm, id);
+
+		if (!price.has_value() || *price <= 0) {
+			return std::nullopt;
+		}
+
+		return price;
+	};
+
+	/*
 		We need to check inventory now to determine if we should buy anything.
 		This allows us to set already_nothing_more_to_buy even during countdown
 		if we determine there's nothing to purchase.
@@ -89,7 +104,7 @@ inline std::optional<item_flavour_id> handle_purchases(
 			}
 
 			if (::is_backpack_like(flavour)) {
-				const auto price_opt = ::find_price_of(ctx.cosm, item_flavour_id(id));
+				const auto price_opt = affordable_price(item_flavour_id(id));
 				if (price_opt.has_value() && *price_opt <= available_money && *price_opt < cheapest_price) {
 					cheapest_price = *price_opt;
 					cheapest_backpack = item_flavour_id(id);
@@ -111,7 +126,7 @@ inline std::optional<item_flavour_id> handle_purchases(
 
 			const auto& tool = flavour.template get<invariants::tool>();
 			if (tool.defusing_speed_mult > 1.f) {
-				const auto price_opt = ::find_price_of(ctx.cosm, item_flavour_id(id));
+				const auto price_opt = affordable_price(item_flavour_id(id));
 				if (price_opt.has_value() && *price_opt <= available_money && *price_opt < cheapest_price) {
 					cheapest_price = *price_opt;
 					cheapest_kit = item_flavour_id(id);
@@ -135,9 +150,9 @@ inline std::optional<item_flavour_id> handle_purchases(
 				return;
 			}
 
-			const auto price = *::find_price_of(ctx.cosm, item_flavour_id(id));
+			const auto price = affordable_price(item_flavour_id(id));
 
-			if (price <= available_money) {
+			if (price.has_value() && *price <= available_money) {
 				const auto buy_type = flavour.template get<invariants::gun>().buy_type;
 
 				if (buy_type == buy_menu_type::PISTOLS) {
@@ -175,9 +190,9 @@ inline std::optional<item_flavour_id> handle_purchases(
 			}
 
 			if (::is_armor_like(flavour)) {
-				const auto price = *::find_price_of(ctx.cosm, item_flavour_id(id));
+				const auto price = affordable_price(item_flavour_id(id));
 
-				if (price <= available_money) {
+				if (price.has_value() && *price <= available_money) {
 					affordable_armor.push_back(item_flavour_id(id));
 				}
 			}
@@ -203,7 +218,7 @@ inline std::optional<item_flavour_id> handle_purchases(
 			Check if we want to buy a non-pistol and if backpack is affordable.
 		*/
 		if (const auto backpack = try_buy_backpack(money)) {
-			const auto backpack_price = *::find_price_of(ctx.cosm, *backpack);
+			const auto backpack_price = *affordable_price(*backpack);
 			const auto remaining_after_backpack = money - backpack_price;
 
 			/*
@@ -219,8 +234,8 @@ inline std::optional<item_flavour_id> handle_purchases(
 				}
 				const auto buy_type = flavour.template get<invariants::gun>().buy_type;
 				if (buy_type != buy_menu_type::PISTOLS) {
-					const auto price = *::find_price_of(ctx.cosm, item_flavour_id(id));
-					if (price <= remaining_after_backpack) {
+					const auto price = affordable_price(item_flavour_id(id));
+					if (price.has_value() && *price <= remaining_after_backpack) {
 						can_afford_non_pistol_after = true;
 					}
 				}
