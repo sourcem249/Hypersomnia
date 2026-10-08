@@ -1,5 +1,6 @@
 #include <cmath>
 #include <limits>
+#include "augs/math/repro_math.h"
 #include "augs/misc/randomization.h"
 #include "game/components/light_component.h"
 #include "view/audiovisual_state/systems/legacy_light_mults.h"
@@ -10,7 +11,7 @@ real32 light_falloff::calc_core() const {
 		At the default 0.5 the light at half its radius matches the linear falloff of the legacy model.
 	*/
 
-	return std::pow(0.08f, std::clamp(falloff, 0.0f, 1.0f));
+	return repro::pow(0.08f, std::clamp(falloff, 0.0f, 1.0f));
 }
 
 legacy_attenuation light_falloff::calc_legacy(const real32 alpha) const {
@@ -20,6 +21,9 @@ legacy_attenuation light_falloff::calc_legacy(const real32 alpha) const {
 		times the brightness they have at the radius (strength) - the legacy model's own parameters.
 		Both curves are compared as they reach the light texture: the physical one scaled by the color's alpha,
 		the legacy one capped by it.
+
+		The result is stored on the light, so the fit uses repro math. std::pow would bake a
+		different attenuation on another libm and desync a cosmos built from the same project.
 	*/
 
 	legacy_attenuation result;
@@ -63,7 +67,7 @@ legacy_attenuation light_falloff::calc_legacy(const real32 alpha) const {
 		const auto edge = terms[0] + terms[1] + terms[2];
 
 		for (int k = 0; k < num_strengths; ++k) {
-			const auto strength = std::round(std::pow(255.0f, static_cast<real32>(k) / (num_strengths - 1)));
+			const auto strength = repro::round(repro::pow(255.0f, static_cast<real32>(k) / (num_strengths - 1)));
 			const auto cutoff_x = std::max(0.0f, 1.0f - 3.0f * strength / radius);
 
 			auto error = 0.0f;

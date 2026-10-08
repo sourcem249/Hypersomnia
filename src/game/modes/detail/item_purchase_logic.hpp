@@ -34,7 +34,10 @@ int num_carryable_pieces(
 							++total_fitting;
 						}
 					}
-					else {
+					else if (piece_occupied_space > 0) {
+						/*
+							space_occupied_per_charge is unsigned. Zero must not divide.
+						*/
 						total_fitting += slot.calc_real_space_available() / piece_occupied_space;
 					}
 				}
